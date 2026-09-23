@@ -1,5 +1,3 @@
-using Castle.DynamicProxy;
-using InterceptorDemoApp.Api.Interceptors;
 using InterceptorDemoApp.Api.Filters;
 using InterceptorDemoApp.Api.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,37 +7,36 @@ namespace InterceptorDemoApp.Api.Extensions
     public static class InterceptedServiceCollectionExtensions
     {
         /// <summary>
-        /// Registers a concrete service and exposes it through its interface
-        /// using a Castle DynamicProxy that applies <see cref="TestServiceInterceptor"/>.
+        /// Registers a service with a decorator in the DI container.
         /// </summary>
-        public static IServiceCollection AddInterceptedScoped<TInterface, TImplementation>(
-            this IServiceCollection services)
-            where TInterface : class
-            where TImplementation : class, TInterface
+        /// <typeparam name="TInterface"></typeparam>
+        /// <typeparam name="TImplementation"></typeparam>
+        /// <typeparam name="TDecorator"></typeparam>
+        /// <param name="services"></param>
+        /// <returns></returns>
+        public static IServiceCollection AddDecoratedScoped<TInterface, TImplementation, TDecorator>(
+        this IServiceCollection services)
+        where TInterface : class
+        where TImplementation : class, TInterface
+        where TDecorator : class, TInterface
         {
             services.AddScoped<TImplementation>();
-            services.AddScoped<TInterface>(provider =>
+            services.AddScoped<TInterface>(sp =>
             {
-                var proxyGenerator = provider.GetRequiredService<ProxyGenerator>();
-                var implementation = provider.GetRequiredService<TImplementation>();
-                var interceptor = provider.GetRequiredService<TestServiceInterceptor>();
-
-                return (TInterface)proxyGenerator.CreateInterfaceProxyWithTarget(
-                    typeof(TInterface),
-                    implementation,
-                    interceptor);
+                var inner = (TInterface)sp.GetRequiredService<TImplementation>();
+                return ActivatorUtilities.CreateInstance<TDecorator>(sp, inner);
             });
 
             return services;
         }
 
         /// <summary>
-        /// Registers all services related to interception in one call.
-        /// - ProxyGenerator
-        /// - TestServiceInterceptor
-        /// - GlobalExecutionTimerFilter
-        /// - Example intercepted IOrderService -> OrderService
+        /// Registers the global execution timer filter and the IOrderService with its logging decorator in the DI container.
+        /// - GlobalExecutionTimerFilter is applied to all controller actions.
+        /// - IOrderService is intercepted with a logging decorator.
         /// </summary>
+        /// <param name="services"></param>
+        /// <returns></returns>
         public static IServiceCollection AddInterceptors(this IServiceCollection services)
         {
             services.AddControllers(options =>
@@ -48,12 +45,11 @@ namespace InterceptorDemoApp.Api.Extensions
                 options.Filters.Add<GlobalExecutionTimerFilter>();
             });
 
-            services.AddSingleton<ProxyGenerator>();
-            services.AddScoped<TestServiceInterceptor>();
             services.AddScoped<GlobalExecutionTimerFilter>();
 
-            // Register the application's intercepted domain services here.
-            services.AddInterceptedScoped<IOrderService, OrderService>();
+            // Register the IOrderService with its implementation and apply the logging decorator
+            services.AddScoped<IOrderService, OrderService>();
+            services.Decorate<IOrderService, OrderServiceLoggingDecorator>();
 
             return services;
         }

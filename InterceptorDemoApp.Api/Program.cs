@@ -1,5 +1,4 @@
 using InterceptorDemoApp.Api.Extensions;
-using InterceptorDemoApp.Api.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 

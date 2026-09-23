@@ -1,4 +1,3 @@
-using InterceptorDemoApp.Api.Filters;
 using Microsoft.Extensions.Logging;
 
 namespace InterceptorDemoApp.Api.Services
@@ -12,7 +11,6 @@ namespace InterceptorDemoApp.Api.Services
             this.logger = logger;
         }
 
-        [TestInterceptorAttribute]
         public void SomeLogic()
         {
             logger.LogInformation("SomeLogic method executed successfully.");
